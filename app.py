@@ -2,7 +2,7 @@ import streamlit as st
 from transcribe import transcribe_video
 from embed_store import store_embeddings, search_embeddings
 from qa_engine import answer_query
-from utils import allowed_file
+from utils import allowed_file, generate_video_metadata
 import os
 
 st.set_page_config(page_title="AI Video Transcriber & Knowledge Explorer", layout="wide")
@@ -68,3 +68,15 @@ if st.session_state['transcript']:
 
 # --- Step 5: Download/Share ---
     st.download_button("Download Transcript", st.session_state['transcript'], file_name="transcript.txt")
+
+# After transcript is generated and available in st.session_state['transcript']
+groq_api_key = st.text_input("Enter your Groq API Key")  # or use from .env
+
+if st.button("Generate Metadata with Groq") and st.session_state['transcript']:
+    title, description, keywords, category = generate_video_metadata(
+        st.session_state['transcript'], groq_api_key
+    )
+    st.markdown(f"**Title:** {title}")
+    st.markdown(f"**Description:** {description}")
+    st.markdown(f"**Keywords:** {keywords}")
+    st.markdown(f"**Category:** {category}")
