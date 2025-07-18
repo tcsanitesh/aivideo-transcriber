@@ -7,3 +7,4 @@ groq
 python-dotenv
 openai
 openai-whisper
+yt-dlp
