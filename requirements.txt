@@ -1,5 +1,5 @@
 streamlit
-moviepy>=1.0.3
+moviepy
 imageio
 imageio-ffmpeg
 faiss-cpu
@@ -9,3 +9,9 @@ python-dotenv
 openai
 openai-whisper
 yt-dlp
+langchain
+
+tqdm
+numpy
+pandas
+python-magic
