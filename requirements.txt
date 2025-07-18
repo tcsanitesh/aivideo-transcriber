@@ -1,11 +1,7 @@
 streamlit
-sentence-transformers
-faiss-cpu
-chromadb
-openai
-whisper
-vosk
 moviepy
-youtube_dl
-langchain
+faiss-cpu
+sentence-transformers
+groq
 python-dotenv
+openai
