@@ -92,6 +92,10 @@ if 'processing_complete' not in st.session_state:
     st.session_state['processing_complete'] = False
 if 'token_usage' not in st.session_state:
     st.session_state['token_usage'] = {'input_tokens': 0, 'output_tokens': 0, 'estimated_cost': 0}
+if 'current_query' not in st.session_state:
+    st.session_state['current_query'] = None
+if 'qa_mode' not in st.session_state:
+    st.session_state['qa_mode'] = None
 
 # Step 1: Groq API Key Input
 st.markdown("## 🔑 Step 1: API Configuration")
@@ -320,47 +324,66 @@ if st.session_state['processing_complete'] and st.session_state['transcript']:
             help="Smart Search uses embeddings for precise answers. Direct Analysis uses the full content for comprehensive responses."
         )
         
-        # Q&A interface
-        user_query = st.text_input("Your question:", placeholder="Ask anything about the content...")
-        if st.button('Get Answer', type="primary") and user_query:
-            if qa_mode == "Smart Search (Recommended)" and st.session_state['embeddings_generated']:
-                with st.spinner("🔍 Searching for relevant context..."):
-                    context = search_embeddings(user_query)
-                    st.session_state['context'] = context
-                
-                with st.spinner("🧠 Generating answer..."):
-                    answer, qa_tokens = answer_query_with_metadata(user_query, context, st.session_state['metadata'], groq_api_key)
-                    st.session_state['answer'] = answer
-                    
-                    # Update total token usage
-                    if qa_tokens:
-                        st.session_state['token_usage']['input_tokens'] += qa_tokens['input_tokens']
-                        st.session_state['token_usage']['output_tokens'] += qa_tokens['output_tokens']
-                        st.session_state['token_usage']['estimated_cost'] += qa_tokens['estimated_cost']
-            else:
-                # Direct Analysis mode - use full content
-                with st.spinner("🧠 Analyzing full content..."):
-                    full_content = st.session_state['transcript']
-                    answer, qa_tokens = answer_query_with_metadata(user_query, full_content, st.session_state['metadata'], groq_api_key)
-                    st.session_state['answer'] = answer
-                    st.session_state['context'] = "(Using full content for analysis)"
-                    
-                    # Update total token usage
-                    if qa_tokens:
-                        st.session_state['token_usage']['input_tokens'] += qa_tokens['input_tokens']
-                        st.session_state['token_usage']['output_tokens'] += qa_tokens['output_tokens']
-                        st.session_state['token_usage']['estimated_cost'] += qa_tokens['estimated_cost']
+        # Q&A interface using form to prevent tab jumping
+        with st.form("qa_form", clear_on_submit=False):
+            user_query = st.text_input("Your question:", placeholder="Ask anything about the content...")
+            submit_button = st.form_submit_button('Get Answer', type="primary")
             
-            st.success("✅ Answer ready!")
+            if submit_button and user_query:
+                # Store the query in session state to prevent form clearing
+                st.session_state['current_query'] = user_query
+                st.session_state['qa_mode'] = qa_mode
+                
+                # Process the Q&A
+                if qa_mode == "Smart Search (Recommended)" and st.session_state['embeddings_generated']:
+                    with st.spinner("🔍 Searching for relevant context..."):
+                        context = search_embeddings(user_query)
+                        st.session_state['context'] = context
+                    
+                    with st.spinner("🧠 Generating answer..."):
+                        answer, qa_tokens = answer_query_with_metadata(user_query, context, st.session_state['metadata'], groq_api_key)
+                        st.session_state['answer'] = answer
+                        
+                        # Update total token usage
+                        if qa_tokens:
+                            st.session_state['token_usage']['input_tokens'] += qa_tokens['input_tokens']
+                            st.session_state['token_usage']['output_tokens'] += qa_tokens['output_tokens']
+                            st.session_state['token_usage']['estimated_cost'] += qa_tokens['estimated_cost']
+                else:
+                    # Direct Analysis mode - use full content
+                    with st.spinner("🧠 Analyzing full content..."):
+                        full_content = st.session_state['transcript']
+                        answer, qa_tokens = answer_query_with_metadata(user_query, full_content, st.session_state['metadata'], groq_api_key)
+                        st.session_state['answer'] = answer
+                        st.session_state['context'] = "(Using full content for analysis)"
+                        
+                        # Update total token usage
+                        if qa_tokens:
+                            st.session_state['token_usage']['input_tokens'] += qa_tokens['input_tokens']
+                            st.session_state['token_usage']['output_tokens'] += qa_tokens['output_tokens']
+                            st.session_state['token_usage']['estimated_cost'] += qa_tokens['estimated_cost']
+                
+                st.success("✅ Answer ready!")
         
-        # Display answer
-        if st.session_state['answer']:
+        # Display answer (outside the form to prevent clearing)
+        if st.session_state.get('answer'):
             st.markdown("### 💡 Answer")
             st.markdown(f"**{st.session_state['answer']}**")
             
             # Show context used
             with st.expander("🔍 Show context used"):
-                st.text(st.session_state['context'])
+                st.text(st.session_state.get('context', 'No context available'))
+            
+            # Show the question that was asked
+            if st.session_state.get('current_query'):
+                st.markdown(f"**Question:** {st.session_state['current_query']}")
+            
+            # Clear answer button
+            if st.button("🗑️ Clear Answer", type="secondary"):
+                st.session_state['answer'] = None
+                st.session_state['current_query'] = None
+                st.session_state['context'] = None
+                st.rerun()
         
         # Example questions
         st.markdown("### 💭 Example Questions")
