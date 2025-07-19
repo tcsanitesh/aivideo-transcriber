@@ -9,6 +9,17 @@ from moviepy.video.io.VideoFileClip import VideoFileClip
 import yt_dlp
 import shutil
 import re
+import subprocess
+
+def check_ffmpeg_available():
+    """
+    Check if ffmpeg is available in the system.
+    """
+    try:
+        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return False
 
 def is_valid_youtube_url(url):
     """
@@ -78,16 +89,30 @@ def transcribe_video(video_path_or_url):
     with tempfile.NamedTemporaryFile(suffix='.wav', delete=False) as audio_temp:
         audio_path = audio_temp.name
     try:
+        # Check if ffmpeg is available
+        if not check_ffmpeg_available():
+            return "[Error: ffmpeg is not available. This is required for video processing. Please contact support or try uploading an audio file instead.]"
+        
         # Extract audio
         video = VideoFileClip(video_path)
+        if video.audio is None:
+            return "[Error: No audio track found in the video.]"
+            
         video.audio.write_audiofile(audio_path, logger=None)
 
         # Load Whisper model (use 'base' for speed, 'small' or 'medium' for better accuracy)
         model = whisper.load_model('base')
         result = model.transcribe(audio_path)
         transcript = result['text']
+        
+        if isinstance(transcript, str) and not transcript.strip():
+            return "[Warning: Transcription completed but no text was detected. The video might be silent or contain no speech.]"
+            
     except Exception as e:
-        transcript = f"[Transcription failed: {e}]"
+        if "ffmpeg" in str(e).lower():
+            return "[Error: ffmpeg is not properly installed or configured. This is required for video processing.]"
+        else:
+            return f"[Transcription failed: {e}]"
     finally:
         if os.path.exists(audio_path):
             os.remove(audio_path)

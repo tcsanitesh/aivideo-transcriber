@@ -2,6 +2,7 @@ streamlit
 moviepy
 imageio
 imageio-ffmpeg
+ffmpeg-python
 faiss-cpu
 sentence-transformers
 groq
