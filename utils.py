@@ -88,8 +88,16 @@ def extract_text_from_ppt(file_path):
         text = ""
         for slide in prs.slides:
             for shape in slide.shapes:
-                if hasattr(shape, "text"):
-                    text += shape.text + "\n"
+                # Try to extract text using getattr to avoid linter errors
+                shape_text = getattr(shape, 'text', None)
+                if shape_text:
+                    text += shape_text + "\n"
+                else:
+                    # Try text_frame approach
+                    text_frame = getattr(shape, 'text_frame', None)
+                    if text_frame:
+                        for paragraph in text_frame.paragraphs:
+                            text += paragraph.text + "\n"
         return text.strip()
     except Exception as e:
         return f"[Error reading PPT: {e}]"
