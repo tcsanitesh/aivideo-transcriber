@@ -5,7 +5,7 @@
 import os
 import tempfile
 import whisper
-from moviepy.editor import VideoFileClip
+from moviepy.video.io.VideoFileClip import VideoFileClip
 import yt_dlp
 import shutil
 
