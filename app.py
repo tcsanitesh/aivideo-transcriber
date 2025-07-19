@@ -1,24 +1,24 @@
 import streamlit as st
-from transcribe import transcribe_video
+from transcribe import process_content
 from embed_store import store_embeddings, search_embeddings
 from qa_engine import answer_query
 from utils import allowed_file, generate_video_metadata
 import os
 import json
 
-st.set_page_config(page_title="AI Video Transcriber & Knowledge Explorer", layout="wide")
-st.title("🎥 AI Video Transcriber & Knowledge Explorer")
+st.set_page_config(page_title="AI Content Analyzer & Knowledge Explorer", layout="wide")
+st.title("🎥 AI Content Analyzer & Knowledge Explorer")
 
 st.write("""
 **Workflow:**
-1. Upload a video or paste a YouTube link
-2. Transcribe the video and generate comprehensive metadata
+1. Upload a video/audio/document or paste a YouTube link
+2. Extract text content and generate comprehensive metadata
 3. Generate embeddings & store in vector DB
 4. Ask questions about the content
 """)
 
-# --- Step 1: Upload or Link Video ---
-video_file = st.file_uploader("Upload Video", type=["mp4", "mov", "avi", "mkv"])
+# --- Step 1: Upload or Link Content ---
+video_file = st.file_uploader("Upload Video/Audio/Document", type=["mp4", "mov", "avi", "mkv", "wav", "mp3", "m4a", "pdf", "doc", "docx", "txt", "ppt", "pptx", "xls", "xlsx"])
 youtube_url = st.text_input("Or paste a YouTube URL", 
                            placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ")
 
@@ -30,6 +30,10 @@ if youtube_url:
             "• Short URLs (youtu.be) are also supported\n"
             "• Avoid playlists - use individual video URLs")
 
+# Groq API Key input (moved outside transcription flow)
+groq_api_key = st.text_input("Enter your Groq API Key for metadata generation", type="password", 
+                            help="Required for generating comprehensive metadata analysis")
+
 if 'transcript' not in st.session_state:
     st.session_state['transcript'] = None
 if 'metadata' not in st.session_state:
@@ -39,13 +43,13 @@ if 'context' not in st.session_state:
 if 'answer' not in st.session_state:
     st.session_state['answer'] = None
 
-# --- Step 2: Transcription & Metadata Generation ---
-if (video_file or youtube_url) and st.button('Transcribe Video'):
+# --- Step 2: Content Processing & Metadata Generation ---
+if (video_file or youtube_url) and st.button('Process Content'):
     if video_file:
         video_path = f"temp_{video_file.name}"
         with open(video_path, "wb") as f:
             f.write(video_file.read())
-        st.info("Processing uploaded video...")
+        st.info("Processing uploaded file...")
     elif youtube_url:
         video_path = youtube_url
         st.info("Processing YouTube URL...")
@@ -53,24 +57,23 @@ if (video_file or youtube_url) and st.button('Transcribe Video'):
         video_path = None
         
     if video_path:
-        with st.spinner("Transcribing video... This may take a few minutes for longer videos."):
-            transcript = transcribe_video(video_path)
+        with st.spinner("Processing content... This may take a few minutes for longer files."):
+            transcript = process_content(video_path)
             
         if isinstance(transcript, str) and transcript.startswith("[Error:"):
             st.error(transcript)
         else:
             st.session_state['transcript'] = transcript
-            st.success("Transcription complete!")
+            st.success("Content processing complete!")
             
-            # Automatically generate metadata
-            groq_api_key = st.text_input("Enter your Groq API Key for metadata generation", type="password")
+            # Generate metadata if Groq API key is provided
             if groq_api_key:
                 with st.spinner("Generating comprehensive metadata..."):
                     metadata = generate_video_metadata(transcript, groq_api_key)
                     st.session_state['metadata'] = metadata
                 st.success("Metadata generation complete!")
             else:
-                st.info("Enter your Groq API Key above to generate comprehensive metadata")
+                st.warning("Enter your Groq API Key above to generate comprehensive metadata")
             
         # Clean up temporary file if it was created
         if video_file and os.path.exists(video_path):
@@ -78,8 +81,16 @@ if (video_file or youtube_url) and st.button('Transcribe Video'):
 
 # --- Step 3: Display Metadata & Transcript ---
 if st.session_state['transcript']:
+    # Manual metadata generation button
+    if not st.session_state['metadata'] and groq_api_key:
+        if st.button('Generate Metadata Now'):
+            with st.spinner("Generating comprehensive metadata..."):
+                metadata = generate_video_metadata(st.session_state['transcript'], groq_api_key)
+                st.session_state['metadata'] = metadata
+            st.success("Metadata generation complete!")
+    
     # Create tabs for different sections
-    tab1, tab2, tab3 = st.tabs(["📊 Metadata Analysis", "📝 Transcript", "🔍 Q&A"])
+    tab1, tab2, tab3 = st.tabs(["📊 Metadata Analysis", "📝 Content", "🔍 Q&A"])
     
     with tab1:
         if st.session_state['metadata']:
@@ -160,17 +171,17 @@ if st.session_state['transcript']:
                     for concept in related:
                         st.markdown(f"• {concept}")
         else:
-            st.info("No metadata available. Enter your Groq API Key and regenerate to get comprehensive analysis.")
+            st.info("No metadata available. Enter your Groq API Key and click 'Generate Metadata Now' to get comprehensive analysis.")
     
     with tab2:
-        st.subheader("📝 Full Transcript")
-        st.text_area("Transcript", st.session_state['transcript'], height=400)
+        st.subheader("📝 Extracted Content")
+        st.text_area("Content", st.session_state['transcript'], height=400)
         
-        # Download transcript
+        # Download content
         st.download_button(
-            "📥 Download Transcript", 
+            "📥 Download Content", 
             st.session_state['transcript'], 
-            file_name="transcript.txt",
+            file_name="extracted_content.txt",
             mime="text/plain"
         )
 

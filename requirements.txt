@@ -16,3 +16,7 @@ tqdm
 numpy
 pandas
 python-magic
+PyPDF2
+python-docx
+openpyxl
+python-pptx

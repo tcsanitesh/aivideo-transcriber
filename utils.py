@@ -2,9 +2,15 @@
 
 import os
 from groq import Groq
+import PyPDF2
+import docx
+import pandas as pd
+from pptx import Presentation
+import re
 
 def allowed_file(filename):
-    return filename.lower().endswith((".mp4", ".mov", ".avi", ".mkv"))
+    return filename.lower().endswith((".mp4", ".mov", ".avi", ".mkv", ".wav", ".mp3", ".m4a", 
+                                    ".pdf", ".doc", ".docx", ".txt", ".ppt", ".pptx", ".xls", ".xlsx"))
 
 
 def chunk_text(text, chunk_size=500, overlap=50):
@@ -18,6 +24,95 @@ def chunk_text(text, chunk_size=500, overlap=50):
         chunks.append(text[start:end])
         start += chunk_size - overlap
     return chunks
+
+
+def extract_text_from_file(file_path, file_type):
+    """
+    Extract text from different file types.
+    """
+    try:
+        if file_type in ['pdf']:
+            return extract_text_from_pdf(file_path)
+        elif file_type in ['doc', 'docx']:
+            return extract_text_from_docx(file_path)
+        elif file_type in ['txt']:
+            return extract_text_from_txt(file_path)
+        elif file_type in ['ppt', 'pptx']:
+            return extract_text_from_ppt(file_path)
+        elif file_type in ['xls', 'xlsx']:
+            return extract_text_from_excel(file_path)
+        else:
+            return f"[Error: Unsupported file type: {file_type}]"
+    except Exception as e:
+        return f"[Error extracting text from {file_type}: {e}]"
+
+
+def extract_text_from_pdf(file_path):
+    """Extract text from PDF file."""
+    try:
+        with open(file_path, 'rb') as file:
+            pdf_reader = PyPDF2.PdfReader(file)
+            text = ""
+            for page in pdf_reader.pages:
+                text += page.extract_text() + "\n"
+        return text.strip()
+    except Exception as e:
+        return f"[Error reading PDF: {e}]"
+
+
+def extract_text_from_docx(file_path):
+    """Extract text from DOCX file."""
+    try:
+        doc = docx.Document(file_path)
+        text = ""
+        for paragraph in doc.paragraphs:
+            text += paragraph.text + "\n"
+        return text.strip()
+    except Exception as e:
+        return f"[Error reading DOCX: {e}]"
+
+
+def extract_text_from_txt(file_path):
+    """Extract text from TXT file."""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return file.read().strip()
+    except Exception as e:
+        return f"[Error reading TXT: {e}]"
+
+
+def extract_text_from_ppt(file_path):
+    """Extract text from PPT/PPTX file."""
+    try:
+        prs = Presentation(file_path)
+        text = ""
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text += shape.text + "\n"
+        return text.strip()
+    except Exception as e:
+        return f"[Error reading PPT: {e}]"
+
+
+def extract_text_from_excel(file_path):
+    """Extract text from Excel file."""
+    try:
+        # Read all sheets
+        excel_file = pd.ExcelFile(file_path)
+        text = ""
+        for sheet_name in excel_file.sheet_names:
+            df = pd.read_excel(file_path, sheet_name=sheet_name)
+            text += f"Sheet: {sheet_name}\n"
+            text += df.to_string() + "\n\n"
+        return text.strip()
+    except Exception as e:
+        return f"[Error reading Excel: {e}]"
+
+
+def get_file_type(filename):
+    """Get file type from filename."""
+    return filename.split('.')[-1].lower() if '.' in filename else None
 
 
 def generate_video_metadata(transcript, groq_api_key=None):
