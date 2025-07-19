@@ -1,7 +1,7 @@
 import streamlit as st
 from transcribe import process_content
 from embed_store import store_embeddings, search_embeddings
-from qa_engine import answer_query
+from qa_engine import answer_query, answer_query_with_metadata
 from utils import allowed_file, generate_video_metadata
 import os
 import json
@@ -188,22 +188,38 @@ if st.session_state['transcript']:
     with tab3:
         st.subheader("🔍 Ask Questions About the Content")
         
-        # Embedding generation
-        if st.button('Generate Embeddings & Store'):
-            with st.spinner("Generating embeddings and storing in vector DB..."):
-                store_embeddings(st.session_state['transcript'])
-            st.success("Embeddings stored!")
+        # Q&A Mode Selection
+        qa_mode = st.radio(
+            "Choose Q&A Mode:",
+            ["Smart Search (Recommended)", "Direct Analysis"],
+            help="Smart Search uses embeddings for precise answers. Direct Analysis uses the full content for comprehensive responses."
+        )
+        
+        # Embedding generation (only for Smart Search mode)
+        if qa_mode == "Smart Search (Recommended)":
+            if st.button('Generate Embeddings & Store'):
+                with st.spinner("Generating embeddings and storing in vector DB..."):
+                    store_embeddings(st.session_state['transcript'])
+                st.success("Embeddings stored!")
         
         # Q&A interface
-        user_query = st.text_input("Your question:", placeholder="Ask anything about the video content...")
+        user_query = st.text_input("Your question:", placeholder="Ask anything about the content...")
         if st.button('Get Answer') and user_query:
-            with st.spinner("Searching for relevant context..."):
-                context = search_embeddings(user_query)
-                st.session_state['context'] = context
-            
-            with st.spinner("Generating answer..."):
-                answer = answer_query(user_query, context)
-                st.session_state['answer'] = answer
+            if qa_mode == "Smart Search (Recommended)":
+                with st.spinner("Searching for relevant context..."):
+                    context = search_embeddings(user_query)
+                    st.session_state['context'] = context
+                
+                with st.spinner("Generating answer..."):
+                    answer = answer_query_with_metadata(user_query, context, st.session_state['metadata'], groq_api_key)
+                    st.session_state['answer'] = answer
+            else:
+                # Direct Analysis mode - use full content
+                with st.spinner("Analyzing full content..."):
+                    full_content = st.session_state['transcript']
+                    answer = answer_query_with_metadata(user_query, full_content, st.session_state['metadata'], groq_api_key)
+                    st.session_state['answer'] = answer
+                    st.session_state['context'] = "(Using full content for analysis)"
             
             st.success("Answer ready!")
         
@@ -225,4 +241,16 @@ if st.session_state['transcript']:
         - What solutions are proposed?
         - What are the key takeaways?
         - What problems are mentioned?
+        - Can you explain [specific concept]?
+        - What is the overall sentiment?
+        - Who is the target audience?
+        """)
+        
+        # Tips for better Q&A
+        st.markdown("### 💡 Tips for Better Answers")
+        st.markdown("""
+        - **Be specific**: Instead of "What is this about?", try "What are the main benefits discussed?"
+        - **Use keywords**: Include key terms from the content in your questions
+        - **Try different modes**: If Smart Search doesn't work, try Direct Analysis
+        - **Ask follow-up questions**: Build on previous answers for deeper insights
         """)
