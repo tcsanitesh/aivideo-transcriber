@@ -8,6 +8,23 @@ import whisper
 from moviepy.video.io.VideoFileClip import VideoFileClip
 import yt_dlp
 import shutil
+import re
+
+def is_valid_youtube_url(url):
+    """
+    Check if the URL is a valid YouTube URL.
+    """
+    youtube_patterns = [
+        r'(?:https?://)?(?:www\.)?youtube\.com/watch\?v=[\w-]+',
+        r'(?:https?://)?(?:www\.)?youtube\.com/embed/[\w-]+',
+        r'(?:https?://)?(?:www\.)?youtu\.be/[\w-]+',
+        r'(?:https?://)?(?:www\.)?youtube\.com/v/[\w-]+'
+    ]
+    
+    for pattern in youtube_patterns:
+        if re.match(pattern, url):
+            return True
+    return False
 
 def transcribe_video(video_path_or_url):
     """
@@ -16,15 +33,40 @@ def transcribe_video(video_path_or_url):
     """
     # If input is a YouTube URL, download the video first
     if video_path_or_url.startswith('http'):
+        # Validate YouTube URL first
+        if not is_valid_youtube_url(video_path_or_url):
+            return "[Error: Invalid YouTube URL. Please provide a valid YouTube video URL.]"
+            
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = os.path.join(temp_dir, 'video.mp4')
             ydl_opts = {
                 'outtmpl': output_path,
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4',
-                'merge_output_format': 'mp4'
+                'format': 'best[ext=mp4]/best',  # Simplified format selection
+                'merge_output_format': 'mp4',
+                'ignoreerrors': True,  # Continue on errors
+                'no_warnings': True,   # Reduce noise
+                'quiet': True,         # Quiet mode
+                'extract_flat': False, # Extract full video
+                'nocheckcertificate': True,  # Skip certificate verification
+                'prefer_ffmpeg': True, # Prefer ffmpeg for merging
             }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([video_path_or_url])
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    # First, try to extract info to validate URL
+                    info = ydl.extract_info(video_path_or_url, download=False)
+                    if info is None:
+                        return "[Error: Could not extract video info. Please check the URL and try again.]"
+                    
+                    # Download the video
+                    ydl.download([video_path_or_url])
+                    
+                    # Check if file was actually downloaded
+                    if not os.path.exists(output_path):
+                        return "[Error: Video download failed. Please check the URL and try again.]"
+                        
+            except Exception as e:
+                return f"[YouTube download error: {str(e)}. Please check the URL and try again.]"
+            
             # Move the downloaded file to a temp file for processing
             with tempfile.NamedTemporaryFile(suffix='.mp4', delete=False) as temp_vid:
                 shutil.copyfile(output_path, temp_vid.name)

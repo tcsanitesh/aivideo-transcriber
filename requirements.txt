@@ -8,7 +8,7 @@ groq
 python-dotenv
 openai
 openai-whisper
-yt-dlp
+yt-dlp>=2023.12.30
 langchain
 
 tqdm

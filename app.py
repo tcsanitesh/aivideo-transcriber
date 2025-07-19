@@ -18,7 +18,16 @@ st.write("""
 
 # --- Step 1: Upload or Link Video ---
 video_file = st.file_uploader("Upload Video", type=["mp4", "mov", "avi", "mkv"])
-youtube_url = st.text_input("Or paste a YouTube URL")
+youtube_url = st.text_input("Or paste a YouTube URL", 
+                           placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+
+# Add helpful tips
+if youtube_url:
+    st.info("💡 **YouTube URL Tips:**\n"
+            "• Make sure the video is public and not age-restricted\n"
+            "• Use the full URL from your browser's address bar\n"
+            "• Short URLs (youtu.be) are also supported\n"
+            "• Avoid playlists - use individual video URLs")
 
 if 'transcript' not in st.session_state:
     st.session_state['transcript'] = None
@@ -33,14 +42,26 @@ if (video_file or youtube_url) and st.button('Transcribe Video'):
         video_path = f"temp_{video_file.name}"
         with open(video_path, "wb") as f:
             f.write(video_file.read())
+        st.info("Processing uploaded video...")
     elif youtube_url:
-        video_path = youtube_url  # Placeholder: treat as path for now
+        video_path = youtube_url
+        st.info("Processing YouTube URL...")
     else:
         video_path = None
-    st.info("Transcribing... (this is a placeholder)")
-    transcript = transcribe_video(video_path)
-    st.session_state['transcript'] = transcript
-    st.success("Transcription complete!")
+        
+    if video_path:
+        with st.spinner("Transcribing video... This may take a few minutes for longer videos."):
+            transcript = transcribe_video(video_path)
+            
+        if isinstance(transcript, str) and transcript.startswith("[Error:"):
+            st.error(transcript)
+        else:
+            st.session_state['transcript'] = transcript
+            st.success("Transcription complete!")
+            
+        # Clean up temporary file if it was created
+        if video_file and os.path.exists(video_path):
+            os.remove(video_path)
 
 # --- Step 3: Embedding & Vector DB ---
 if st.session_state['transcript']:
