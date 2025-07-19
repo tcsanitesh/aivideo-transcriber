@@ -123,6 +123,39 @@ def get_file_type(filename):
     return filename.split('.')[-1].lower() if '.' in filename else None
 
 
+def estimate_tokens_and_cost(text, model="llama3-70b-8192"):
+    """
+    Estimate token count and cost for Groq API calls.
+    Rough estimation: 1 token ≈ 4 characters for English text.
+    """
+    # Rough token estimation (1 token ≈ 4 characters)
+    estimated_tokens = len(text) // 4
+    
+    # Groq pricing (as of 2024) - approximate
+    pricing = {
+        "llama3-70b-8192": {"input": 0.00005, "output": 0.00010},  # per 1K tokens
+        "llama3-8b-8192": {"input": 0.00002, "output": 0.00004},
+        "mixtral-8x7b-32768": {"input": 0.00003, "output": 0.00006}
+    }
+    
+    model_pricing = pricing.get(model, pricing["llama3-70b-8192"])
+    
+    # Estimate input and output tokens (assuming 1:1 ratio for metadata generation)
+    input_tokens = estimated_tokens
+    output_tokens = estimated_tokens * 0.8  # Output is usually shorter
+    
+    # Calculate cost
+    input_cost = (input_tokens / 1000) * model_pricing["input"]
+    output_cost = (output_tokens / 1000) * model_pricing["output"]
+    total_cost = input_cost + output_cost
+    
+    return {
+        "input_tokens": int(input_tokens),
+        "output_tokens": int(output_tokens),
+        "estimated_cost": total_cost
+    }
+
+
 def generate_video_metadata(transcript, groq_api_key=None):
     """
     Use Groq API to generate comprehensive video metadata from transcript.
@@ -133,6 +166,7 @@ def generate_video_metadata(transcript, groq_api_key=None):
     if not groq_api_key:
         return {"error": "GROK_API_KEY not set"}
     
+    # Estimate tokens and cost before making the call
     prompt = f"""
     Based on the following transcript, provide comprehensive metadata in JSON format:
 
@@ -160,6 +194,9 @@ def generate_video_metadata(transcript, groq_api_key=None):
     Focus on accuracy and provide actionable insights. If the transcript is unclear or too short, indicate that in the response.
     """
     
+    # Estimate cost
+    cost_estimate = estimate_tokens_and_cost(prompt)
+    
     try:
         client = Groq(api_key=groq_api_key)
         response = client.chat.completions.create(
@@ -175,6 +212,13 @@ def generate_video_metadata(transcript, groq_api_key=None):
         content = response.choices[0].message.content
         if content is None:
             return {"error": "No content returned from Groq API"}
+        
+        # Update cost estimate with actual usage
+        actual_usage = {
+            "input_tokens": getattr(response.usage, 'prompt_tokens', cost_estimate["input_tokens"]) if response.usage else cost_estimate["input_tokens"],
+            "output_tokens": getattr(response.usage, 'completion_tokens', cost_estimate["output_tokens"]) if response.usage else cost_estimate["output_tokens"],
+            "estimated_cost": cost_estimate["estimated_cost"]
+        }
         
         # Try to extract JSON from the response
         import json
@@ -192,6 +236,7 @@ def generate_video_metadata(transcript, groq_api_key=None):
                 json_str = content.strip()
             
             metadata = json.loads(json_str)
+            metadata["token_usage"] = actual_usage  # Add token usage to metadata
             return metadata
             
         except json.JSONDecodeError:
@@ -210,7 +255,8 @@ def generate_video_metadata(transcript, groq_api_key=None):
                 "estimated_duration": "Unknown",
                 "difficulty_level": "General",
                 "action_items": ["Review the detailed description"],
-                "related_concepts": ["Content Analysis"]
+                "related_concepts": ["Content Analysis"],
+                "token_usage": actual_usage
             }
             
     except Exception as e:

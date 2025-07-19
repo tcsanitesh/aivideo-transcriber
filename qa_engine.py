@@ -65,6 +65,7 @@ Please provide a helpful and informative response. If the exact answer isn't in 
 def answer_query_with_metadata(query, context, metadata=None, groq_api_key=None):
     """
     Enhanced Q&A that also uses metadata for better context and responses.
+    Returns answer and token usage information.
     """
     if groq_api_key is None:
         groq_api_key = os.getenv("GROK_API_KEY")
@@ -117,7 +118,20 @@ Please provide a comprehensive and helpful response using both the content and m
         if content is None:
             return "[Error: No response from Groq API]"
         
-        return content.strip()
+        # Get token usage
+        token_usage = {
+            "input_tokens": getattr(response.usage, 'prompt_tokens', 0) if response.usage else 0,
+            "output_tokens": getattr(response.usage, 'completion_tokens', 0) if response.usage else 0,
+            "estimated_cost": 0  # Will be calculated in the app
+        }
+        
+        # Calculate cost (approximate)
+        if token_usage["input_tokens"] > 0 or token_usage["output_tokens"] > 0:
+            input_cost = (token_usage["input_tokens"] / 1000) * 0.00005
+            output_cost = (token_usage["output_tokens"] / 1000) * 0.00010
+            token_usage["estimated_cost"] = input_cost + output_cost
+        
+        return content.strip(), token_usage
         
     except Exception as e:
-        return f"[Groq API error: {e}]"
+        return f"[Groq API error: {e}]", {"input_tokens": 0, "output_tokens": 0, "estimated_cost": 0}
