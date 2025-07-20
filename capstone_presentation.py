@@ -365,7 +365,7 @@ Questions & Discussion"""
 
 👨‍💼 Developer Information:
 • Name: Anitesh Shaw
-• LinkedIn: linkedin.com/in/anitesh-shaw
+• LinkedIn: linkedin.com/in/aniteshshaw
 • GitHub: github.com/tcsanitesh
 
 🔗 Project Links:
@@ -374,7 +374,7 @@ Questions & Discussion"""
 • Documentation: [Project Documentation]
 
 📧 Contact Details:
-• LinkedIn: https://linkedin.com/in/anitesh-shaw
+• LinkedIn: https://linkedin.com/in/aniteshshaw
 • GitHub: https://github.com/tcsanitesh
 
 🌐 Professional Links:
@@ -394,18 +394,14 @@ Questions & Discussion"""
             
             if title_shape:
                 title_shape.text = slide_data["title"]
-            if subtitle_shape:
-                subtitle_shape.text = slide_data["content"]
-        else:
-            # Content slide
-            slide = prs.slides.add_slide(prs.slide_layouts[1])
-            title_shape = slide.shapes.title
+                if subtitle_shape:
+                    subtitle_shape = slide_data["content"]
             content_shape = slide.placeholders[1]
             
             if title_shape:
                 title_shape.text = slide_data["title"]
             if content_shape:
-                content_shape.text = slide_data["content"]
+                content_shape = slide_data["content"]
     
     # Save the presentation
     filename = "AI_Content_Analyzer_Capstone_Presentation.pptx"

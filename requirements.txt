@@ -11,6 +11,8 @@ openai
 openai-whisper
 yt-dlp>=2023.12.30
 langchain
+supabase
+psycopg2-binary
 
 tqdm
 numpy

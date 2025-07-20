@@ -3,10 +3,62 @@ from transcribe import process_content
 from embed_store import store_embeddings, search_embeddings
 from qa_engine import answer_query, answer_query_with_metadata
 from utils import allowed_file, generate_video_metadata
+from supabase_storage import get_storage_manager
+from supabase_auth import show_auth_ui
 import os
 import json
 import time
+import uuid
 from groq import Groq
+
+def initialize_session():
+    """Initialize session state for user management."""
+    if 'session_id' not in st.session_state:
+        st.session_state['session_id'] = str(uuid.uuid4())
+    
+    if 'user_id' not in st.session_state:
+        st.session_state['user_id'] = None
+    
+    if 'is_authenticated' not in st.session_state:
+        st.session_state['is_authenticated'] = False
+
+def show_login_section():
+    """Show login/registration section."""
+    st.markdown("## 🔐 User Authentication")
+    
+    # Simple authentication options
+    auth_option = st.radio(
+        "Choose authentication method:",
+        ["Anonymous Session", "Email/Password", "Quick Login"]
+    )
+    
+    if auth_option == "Anonymous Session":
+        st.info("🔒 Using anonymous session - your data will be isolated to this browser session")
+        st.session_state['user_id'] = f"anon_{st.session_state['session_id']}"
+        st.session_state['is_authenticated'] = True
+        st.success("✅ Anonymous session created!")
+        return True
+    
+    elif auth_option == "Email/Password":
+        st.warning("⚠️ Email/Password authentication requires Supabase Auth setup")
+        st.info("For now, use 'Anonymous Session' or 'Quick Login'")
+        return False
+    
+    elif auth_option == "Quick Login":
+        # Simple username-based login for demo
+        username = st.text_input("Enter a username:", placeholder="e.g., john_doe")
+        
+        if st.button("Login", type="primary"):
+            if username and len(username) > 2:
+                st.session_state['user_id'] = f"user_{username}_{int(time.time())}"
+                st.session_state['is_authenticated'] = True
+                st.success(f"✅ Logged in as {username}!")
+                return True
+            else:
+                st.error("❌ Please enter a valid username (at least 3 characters)")
+                return False
+    
+    return False
 
 def validate_groq_api_key(api_key):
     """Validate Groq API key by making a test request."""
@@ -53,6 +105,9 @@ def show_notification(message, notification_type="success", duration=10):
         }}
     </style>
     """, unsafe_allow_html=True)
+
+# Initialize session
+initialize_session()
 
 # Page configuration
 st.set_page_config(
@@ -215,6 +270,26 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# Authentication Check
+if not st.session_state.get('is_authenticated', False):
+    if show_auth_ui():
+        st.rerun()
+    else:
+        st.stop()
+
+# Show current user info
+if st.session_state.get('user_id'):
+    user_email = st.session_state.get('user_email', 'Unknown')
+    user_display = user_email if '@' in user_email else st.session_state['user_id'].replace('anon_', 'Anonymous User ').replace('user_', 'User: ')
+    st.info(f"👤 Logged in as: {user_display}")
+    
+    # Logout option
+    if st.button("🚪 Logout"):
+        st.session_state['is_authenticated'] = False
+        st.session_state['user_id'] = None
+        st.session_state['user_email'] = None
+        st.rerun()
+
 # Initialize session state
 if 'transcript' not in st.session_state:
     st.session_state['transcript'] = None
@@ -329,15 +404,24 @@ if (video_file or youtube_url) and groq_api_key:
             st.session_state['embeddings_generated'] = False
             st.session_state['token_usage'] = {'input_tokens': 0, 'output_tokens': 0, 'estimated_cost': 0}
             
+            # Initialize storage manager
+            storage_manager = get_storage_manager()
+            
             # Process content
             if video_file:
                 video_path = f"temp_{video_file.name}"
                 with open(video_path, "wb") as f:
                     f.write(video_file.read())
                 st.info(f"📁 Processing uploaded file: {video_file.name}")
+                filename = video_file.name
+                file_size = video_file.size
+                source_url = None
             elif youtube_url:
                 video_path = youtube_url
                 st.info("📺 Processing YouTube URL...")
+                filename = f"youtube_{int(time.time())}.mp4"
+                file_size = None
+                source_url = youtube_url
             
             # Content processing
             with st.spinner("🔄 Extracting content..."):
@@ -348,6 +432,26 @@ if (video_file or youtube_url) and groq_api_key:
             else:
                 st.session_state['transcript'] = transcript
                 st.success("✅ Content extraction complete!")
+                
+                # Save transcript to Supabase
+                with st.spinner("💾 Saving transcript to database..."):
+                    file_type = filename.split('.')[-1] if '.' in filename else 'unknown'
+                    # Ensure transcript is a string
+                    transcript_str = str(transcript) if transcript is not None else ""
+                    save_result = storage_manager.save_transcript(
+                        filename=filename,
+                        transcript=transcript_str,
+                        file_type=file_type,
+                        file_size=file_size,
+                        source_url=source_url
+                    )
+                    
+                    if save_result['success']:
+                        file_id = save_result['file_id']
+                        st.session_state['current_file_id'] = file_id
+                        st.success("✅ Transcript saved to database!")
+                    else:
+                        st.error(f"❌ Failed to save transcript: {save_result.get('error', 'Unknown error')}")
                 
                 # Generate metadata
                 with st.spinner("🧠 Generating comprehensive metadata..."):
@@ -360,11 +464,65 @@ if (video_file or youtube_url) and groq_api_key:
                         
                 st.success("✅ Metadata generation complete!")
                 
+                # Save metadata to Supabase
+                if 'current_file_id' in st.session_state and metadata and 'error' not in metadata:
+                    with st.spinner("💾 Saving metadata to database..."):
+                        # Remove token_usage from metadata before saving
+                        metadata_to_save = {k: v for k, v in metadata.items() if k != 'token_usage'}
+                        save_metadata_result = storage_manager.save_metadata(
+                            file_id=st.session_state['current_file_id'],
+                            metadata=metadata_to_save
+                        )
+                        
+                        if save_metadata_result['success']:
+                            st.success("✅ Metadata saved to database!")
+                        else:
+                            st.warning(f"⚠️ Failed to save metadata: {save_metadata_result.get('error', 'Unknown error')}")
+                
                 # Generate embeddings automatically
                 with st.spinner("🔍 Generating embeddings for Q&A..."):
                     store_embeddings(transcript)
                     st.session_state['embeddings_generated'] = True
                 st.success("✅ Embeddings generated!")
+                
+                # Save embeddings to Supabase
+                if 'current_file_id' in st.session_state:
+                    with st.spinner("💾 Saving embeddings to database..."):
+                        # Get embeddings from embed_store
+                        from embed_store import embedding_index, chunks_store
+                        if embedding_index is not None and chunks_store:
+                            # Convert FAISS index to list for storage
+                            embeddings_list = []
+                            for i, chunk in enumerate(chunks_store):
+                                # Get embedding for this chunk
+                                from sentence_transformers import SentenceTransformer
+                                model = SentenceTransformer('all-MiniLM-L6-v2')
+                                embedding = model.encode([chunk])[0].tolist()
+                                embeddings_list.append({
+                                    'chunk': chunk,
+                                    'embedding': embedding
+                                })
+                            
+                            save_embeddings_result = storage_manager.save_embeddings(
+                                file_id=st.session_state['current_file_id'],
+                                embeddings=embeddings_list,
+                                texts=chunks_store
+                            )
+                            
+                            if save_embeddings_result['success']:
+                                st.success("✅ Embeddings saved to database!")
+                            else:
+                                st.warning(f"⚠️ Failed to save embeddings: {save_embeddings_result.get('error', 'Unknown error')}")
+                
+                # Save token usage to Supabase
+                if 'current_file_id' in st.session_state and st.session_state['token_usage']['input_tokens'] > 0:
+                    storage_manager.save_token_usage(
+                        file_id=st.session_state['current_file_id'],
+                        operation="metadata_generation",
+                        input_tokens=st.session_state['token_usage']['input_tokens'],
+                        output_tokens=st.session_state['token_usage']['output_tokens'],
+                        estimated_cost=st.session_state['token_usage']['estimated_cost']
+                    )
                 
                 # Mark processing as complete
                 st.session_state['processing_complete'] = True
@@ -380,7 +538,7 @@ if st.session_state['processing_complete'] and st.session_state['transcript']:
     st.markdown("## 📊 Analysis Results")
     
     # Create tabs for different sections
-    tab1, tab2, tab3 = st.tabs(["📊 Metadata Analysis", "📝 Content", "🔍 Q&A"])
+    tab1, tab2, tab3, tab4 = st.tabs(["📊 Metadata Analysis", "📝 Content", "🔍 Q&A", "🗂️ File Management"])
     
     with tab1:
         if st.session_state['metadata']:
@@ -599,6 +757,112 @@ if st.session_state['processing_complete'] and st.session_state['transcript']:
         - **Try different modes**: If Smart Search doesn't work, try Direct Analysis
         - **Ask follow-up questions**: Build on previous answers for deeper insights
         """)
+    
+    with tab4:
+        st.subheader("🗂️ File Management")
+        
+        # Initialize storage manager
+        storage_manager = get_storage_manager()
+        
+        # Search functionality
+        st.markdown("### 🔍 Search Files")
+        search_query = st.text_input("Search by filename or content:", placeholder="Enter search terms...")
+        
+        if search_query:
+            search_results = storage_manager.search_files(search_query)
+            if search_results:
+                st.success(f"Found {len(search_results)} files matching '{search_query}'")
+            else:
+                st.info("No files found matching your search.")
+        else:
+            # Show all files
+            all_files = storage_manager.get_all_files()
+            if all_files:
+                st.success(f"Found {len(all_files)} files in database")
+            else:
+                st.info("No files found in database.")
+        
+        # Display files
+        files_to_display = search_results if search_query else all_files
+        
+        if files_to_display:
+            st.markdown("### 📋 File List")
+            
+            for file_data in files_to_display:
+                with st.expander(f"📄 {file_data['filename']} ({file_data['file_type']})"):
+                    col1, col2 = st.columns([3, 1])
+                    
+                    with col1:
+                        st.markdown(f"**File ID:** {file_data['id']}")
+                        st.markdown(f"**Type:** {file_data['file_type']}")
+                        st.markdown(f"**Status:** {file_data['processing_status']}")
+                        st.markdown(f"**Created:** {file_data['created_at'][:19]}")
+                        
+                        if file_data['file_size']:
+                            st.markdown(f"**Size:** {file_data['file_size']:,} bytes")
+                        
+                        if file_data['source_url']:
+                            st.markdown(f"**Source:** {file_data['source_url']}")
+                        
+                        # Show transcript preview
+                        if file_data['transcript']:
+                            transcript_preview = file_data['transcript'][:200] + "..." if len(file_data['transcript']) > 200 else file_data['transcript']
+                            st.markdown(f"**Transcript Preview:** {transcript_preview}")
+                    
+                    with col2:
+                        # Action buttons
+                        if st.button(f"📥 Download", key=f"download_{file_data['id']}"):
+                            st.download_button(
+                                "📥 Download Transcript",
+                                file_data['transcript'],
+                                file_name=f"{file_data['filename']}_transcript.txt",
+                                mime="text/plain"
+                            )
+                        
+                        if st.button(f"🗑️ Delete", key=f"delete_{file_data['id']}"):
+                            if storage_manager.delete_file(file_data['id']):
+                                st.success("File deleted successfully!")
+                                st.rerun()
+                            else:
+                                st.error("Failed to delete file")
+                        
+                        # Load file for analysis
+                        if st.button(f"📊 Analyze", key=f"analyze_{file_data['id']}"):
+                            # Load transcript into session state
+                            st.session_state['transcript'] = file_data['transcript']
+                            
+                            # Load metadata
+                            metadata = storage_manager.get_metadata(file_data['id'])
+                            if metadata:
+                                st.session_state['metadata'] = metadata
+                            
+                            # Load embeddings
+                            embeddings_data = storage_manager.get_embeddings(file_data['id'])
+                            if embeddings_data:
+                                # Reconstruct FAISS index
+                                from embed_store import store_embeddings
+                                store_embeddings(file_data['transcript'])
+                                st.session_state['embeddings_generated'] = True
+                            
+                            st.session_state['processing_complete'] = True
+                            st.session_state['current_file_id'] = file_data['id']
+                            
+                            st.success("✅ File loaded for analysis! Switch to other tabs to view results.")
+                            st.rerun()
+        
+        # Token usage summary
+        st.markdown("### 💰 Token Usage Summary")
+        usage_summary = storage_manager.get_token_usage_summary()
+        
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric("Total Input Tokens", f"{usage_summary['total_input_tokens']:,}")
+        with col2:
+            st.metric("Total Output Tokens", f"{usage_summary['total_output_tokens']:,}")
+        with col3:
+            st.metric("Total Cost", f"${usage_summary['total_cost']:.4f}")
+        with col4:
+            st.metric("Operations", usage_summary['operations_count'])
 
 # Cost estimation (placeholder - would need actual token counting)
 if st.session_state['token_usage']['input_tokens'] > 0:
@@ -619,6 +883,6 @@ st.markdown("""
 <div class="developer-info">
     <p>🚀 <strong>AI Content Analyzer & Knowledge Explorer</strong></p>
     <p>Developed by <strong>Anitesh Shaw</strong></p>
-    <p>🔗 <a href="https://linkedin.com/in/anitesh-shaw" target="_blank" style="color: white;">LinkedIn Profile</a> | 🔗 <a href="https://github.com/tcsanitesh/aivideo-transcriber" target="_blank" style="color: white;">GitHub Repository</a></p>
+    <p>🔗 <a href="https://linkedin.com/in/aniteshshaw" target="_blank" style="color: white;">LinkedIn Profile</a> | 🔗 <a href="https://github.com/tcsanitesh/aivideo-transcriber" target="_blank" style="color: white;">GitHub Repository</a></p>
 </div>
 """, unsafe_allow_html=True)

@@ -17,11 +17,12 @@ This is a capstone project built for an AI Bootcamp. It’s an end-to-end applic
 ## 💡 Core Technologies
 
 - **Python** (Backend processing)
-- **Whisper API / Vosk / AssemblyAI** (for audio-to-text; free/local options available)
-- **Grok API** (for LLM-based summarization & Q&A)
-- **FAISS or ChromaDB** (Vector DB for embedding search)
-- **SentenceTransformers / OpenAI Embedding or HuggingFace model** (for creating embeddings)
-- **Streamlit or Gradio** (UI)
+- **Whisper API** (for audio-to-text transcription)
+- **Groq API** (for LLM-based summarization & Q&A)
+- **FAISS** (Vector DB for embedding search)
+- **SentenceTransformers** (for creating embeddings)
+- **Streamlit** (UI)
+- **Supabase** (PostgreSQL database for persistent storage)
 - **LangChain** (for chaining steps and document retrieval)
 
 ---
@@ -33,8 +34,11 @@ This is a capstone project built for an AI Bootcamp. It’s an end-to-end applic
 - Extract key topics and auto-summarize
 - Ask natural language questions based on the video transcript
 - Store vectorized chunks of the transcript in vector DB
-- Use semantic search + LLM response (via Grok API)
-- Shareable interface (public URL via Streamlit/Gradio)
+- Use semantic search + LLM response (via Groq API)
+- **Persistent storage** with Supabase PostgreSQL database
+- **File management** with search and download capabilities
+- **Token usage tracking** and cost estimation
+- **Production-ready** deployment on Streamlit Cloud
 
 ---
 
@@ -65,9 +69,12 @@ This is a capstone project built for an AI Bootcamp. It’s an end-to-end applic
     aivideo-transcriber/
 ├── app.py                   # Main Streamlit app
 ├── transcribe.py            # Audio extraction and transcription logic
-├── embed_store.py           # Embedding generation & FAISS/ChromaDB storage
-├── qa_engine.py             # Query + vector search + Grok LLM response
+├── embed_store.py           # Embedding generation & FAISS storage
+├── qa_engine.py             # Query + vector search + Groq LLM response
+├── supabase_storage.py      # Supabase database integration
 ├── utils.py                 # Helper functions
+├── setup_database.sql       # Database schema setup
+├── test_supabase.py         # Supabase connection test
 ├── requirements.txt
 └── README.md
 
@@ -75,12 +82,29 @@ This is a capstone project built for an AI Bootcamp. It’s an end-to-end applic
 
 ## 🚀 Setup Instructions
 
+### 1. **Install Dependencies**
 ```bash
 git clone <your-repo-url>
 cd aivideo-transcriber
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+```
+
+### 2. **Set Up Supabase Database**
+1. Go to your Supabase Dashboard: https://supabase.com/dashboard
+2. Select your project: `lrowromhpwebukywmtem`
+3. Go to "SQL Editor" → "New Query"
+4. Copy and paste the contents of `setup_database.sql`
+5. Click "Run" to create the tables
+
+### 3. **Test Connection**
+```bash
+python test_supabase.py
+```
+
+### 4. **Run Application**
+```bash
 streamlit run app.py
 ```
 
@@ -88,7 +112,16 @@ streamlit run app.py
 
 ## 🔑 API Keys
 
-- Copy `.env.example` to `.env` and add your keys.
+- **Groq API Key**: Required for metadata generation and Q&A
+- **Supabase**: Already configured with your project credentials
+- Copy `.env.example` to `.env` and add your Groq API key.
+
+## 🗂️ Database Setup
+
+The application uses Supabase for persistent storage:
+- **URL**: https://lrowromhpwebukywmtem.supabase.co
+- **Tables**: content_files, metadata, embeddings, token_usage
+- **Setup**: Run `setup_database.sql` in Supabase SQL Editor
 
 ---
 
