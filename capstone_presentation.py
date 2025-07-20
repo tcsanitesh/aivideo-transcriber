@@ -21,7 +21,7 @@ def create_capstone_presentation():
     slides_content = [
         {
             "title": "AI Content Analyzer & Knowledge Explorer",
-            "content": "Capstone Project\n\nAnitesh Shaw\nEmployee ID: 234343\nEmail: anitesh.shaw@tcs.com\n\nTata Consultancy Services"
+            "content": "Capstone Project\n\nAnitesh Shaw\nEmail: anitesh.shaw@tcs.com\nLinkedIn: linkedin.com/in/anitesh-shaw\nGitHub: github.com/tcsanitesh"
         },
         {
             "title": "Project Overview",
@@ -365,9 +365,9 @@ Questions & Discussion"""
 
 👨‍💼 Developer Information:
 • Name: Anitesh Shaw
-• Employee ID: 234343
 • Email: anitesh.shaw@tcs.com
-• Organization: Tata Consultancy Services
+• LinkedIn: linkedin.com/in/anitesh-shaw
+• GitHub: github.com/tcsanitesh
 
 🔗 Project Links:
 • GitHub Repository: https://github.com/tcsanitesh/aivideo-transcriber
@@ -376,18 +376,13 @@ Questions & Discussion"""
 
 📧 Contact Details:
 • Email: anitesh.shaw@tcs.com
-• LinkedIn: [LinkedIn Profile]
+• LinkedIn: https://linkedin.com/in/anitesh-shaw
 • GitHub: https://github.com/tcsanitesh
 
-🏢 Organization:
-• Tata Consultancy Services
-• [Department/Division]
-• [Location]
-
-📞 Additional Contact:
-• Phone: [Phone Number]
-• Extension: [Extension]
-• Office: [Office Location]"""
+🌐 Professional Links:
+• Portfolio: [Portfolio URL]
+• Blog: [Blog URL]
+• Projects: [Projects URL]"""
         }
     ]
     

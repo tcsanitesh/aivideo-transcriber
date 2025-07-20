@@ -2,9 +2,9 @@
 ## Capstone Project Documentation
 
 **Developer:** Anitesh Shaw  
-**Employee ID:** 234343  
 **Email:** anitesh.shaw@tcs.com  
-**Organization:** Tata Consultancy Services  
+**LinkedIn:** [linkedin.com/in/anitesh-shaw](https://linkedin.com/in/anitesh-shaw)  
+**GitHub:** [github.com/tcsanitesh](https://github.com/tcsanitesh)  
 **Project Duration:** [Duration]  
 **Submission Date:** [Date]
 
@@ -541,9 +541,9 @@ This project has significantly enhanced my technical skills, project management 
 ## 📞 Contact Information
 
 **Developer:** Anitesh Shaw  
-**Employee ID:** 234343  
 **Email:** anitesh.shaw@tcs.com  
-**Organization:** Tata Consultancy Services  
+**LinkedIn:** [linkedin.com/in/anitesh-shaw](https://linkedin.com/in/anitesh-shaw)  
+**GitHub:** [github.com/tcsanitesh](https://github.com/tcsanitesh)  
 
 **Project Links:**
 - **GitHub Repository:** https://github.com/tcsanitesh/aivideo-transcriber

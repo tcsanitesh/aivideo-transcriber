@@ -211,7 +211,7 @@ st.markdown("""
     <p>Transform your videos, audio, and documents into actionable insights with AI-powered analysis</p>
 </div>
 <div class="developer-info">
-    <p>🚀 Developed by <strong>Anitesh Shaw</strong> | Employee ID: 234343 | TCS</p>
+    <p>🚀 Developed by <strong>Anitesh Shaw</strong> | 📧 anitesh.shaw@tcs.com</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -618,7 +618,7 @@ st.markdown("---")
 st.markdown("""
 <div class="developer-info">
     <p>🚀 <strong>AI Content Analyzer & Knowledge Explorer</strong></p>
-    <p>Developed by <strong>Anitesh Shaw</strong> | Employee ID: 234343 | Tata Consultancy Services</p>
-    <p>📧 anitesh.shaw@tcs.com | 🔗 <a href="https://github.com/tcsanitesh/aivideo-transcriber" target="_blank" style="color: white;">GitHub Repository</a></p>
+    <p>Developed by <strong>Anitesh Shaw</strong> | 📧 anitesh.shaw@tcs.com</p>
+    <p>🔗 <a href="https://linkedin.com/in/anitesh-shaw" target="_blank" style="color: white;">LinkedIn Profile</a> | 🔗 <a href="https://github.com/tcsanitesh/aivideo-transcriber" target="_blank" style="color: white;">GitHub Repository</a></p>
 </div>
 """, unsafe_allow_html=True)
