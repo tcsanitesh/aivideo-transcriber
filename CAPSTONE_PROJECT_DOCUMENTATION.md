@@ -2,7 +2,6 @@
 ## Capstone Project Documentation
 
 **Developer:** Anitesh Shaw  
-**Email:** anitesh.shaw@tcs.com  
 **LinkedIn:** [linkedin.com/in/anitesh-shaw](https://linkedin.com/in/anitesh-shaw)  
 **GitHub:** [github.com/tcsanitesh](https://github.com/tcsanitesh)  
 **Project Duration:** [Duration]  
@@ -541,7 +540,6 @@ This project has significantly enhanced my technical skills, project management 
 ## 📞 Contact Information
 
 **Developer:** Anitesh Shaw  
-**Email:** anitesh.shaw@tcs.com  
 **LinkedIn:** [linkedin.com/in/anitesh-shaw](https://linkedin.com/in/anitesh-shaw)  
 **GitHub:** [github.com/tcsanitesh](https://github.com/tcsanitesh)  
 

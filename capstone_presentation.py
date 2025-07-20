@@ -21,7 +21,7 @@ def create_capstone_presentation():
     slides_content = [
         {
             "title": "AI Content Analyzer & Knowledge Explorer",
-            "content": "Capstone Project\n\nAnitesh Shaw\nEmail: anitesh.shaw@tcs.com\nLinkedIn: linkedin.com/in/anitesh-shaw\nGitHub: github.com/tcsanitesh"
+            "content": "Capstone Project\n\nAnitesh Shaw\nLinkedIn: linkedin.com/in/anitesh-shaw\nGitHub: github.com/tcsanitesh"
         },
         {
             "title": "Project Overview",
@@ -365,7 +365,6 @@ Questions & Discussion"""
 
 👨‍💼 Developer Information:
 • Name: Anitesh Shaw
-• Email: anitesh.shaw@tcs.com
 • LinkedIn: linkedin.com/in/anitesh-shaw
 • GitHub: github.com/tcsanitesh
 
@@ -375,7 +374,6 @@ Questions & Discussion"""
 • Documentation: [Project Documentation]
 
 📧 Contact Details:
-• Email: anitesh.shaw@tcs.com
 • LinkedIn: https://linkedin.com/in/anitesh-shaw
 • GitHub: https://github.com/tcsanitesh
 
