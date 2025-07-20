@@ -6,6 +6,53 @@ from utils import allowed_file, generate_video_metadata
 import os
 import json
 import time
+from groq import Groq
+
+def validate_groq_api_key(api_key):
+    """Validate Groq API key by making a test request."""
+    try:
+        client = Groq(api_key=api_key)
+        # Make a simple test request
+        response = client.chat.completions.create(
+            model="llama3-70b-8192",
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=10
+        )
+        return True, "API key is valid!"
+    except Exception as e:
+        return False, f"Invalid API key: {str(e)}"
+
+def show_notification(message, notification_type="success", duration=10):
+    """Show a notification that disappears after specified duration."""
+    notification_class = f"notification {notification_type}"
+    st.markdown(f"""
+    <div class="{notification_class}" id="notification">
+        {message}
+    </div>
+    <script>
+        setTimeout(function() {{
+            var notification = document.getElementById('notification');
+            if (notification) {{
+                notification.style.animation = 'slideOut 0.5s ease-in forwards';
+                setTimeout(function() {{
+                    notification.remove();
+                }}, 500);
+            }}
+        }}, {duration * 1000});
+    </script>
+    <style>
+        @keyframes slideOut {{
+            from {{
+                transform: translateX(0);
+                opacity: 1;
+            }}
+            to {{
+                transform: translateX(100%);
+                opacity: 0;
+            }}
+        }}
+    </style>
+    """, unsafe_allow_html=True)
 
 # Page configuration
 st.set_page_config(
@@ -24,6 +71,17 @@ st.markdown("""
         color: white;
         text-align: center;
         margin-bottom: 2rem;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    .developer-info {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        text-align: center;
+        margin: 1rem 0;
+        font-size: 0.9rem;
+        opacity: 0.9;
     }
     .metric-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -32,6 +90,11 @@ st.markdown("""
         color: white;
         text-align: center;
         margin: 0.5rem 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .metric-card:hover {
+        transform: translateY(-2px);
     }
     .info-box {
         background: #f0f2f6;
@@ -39,6 +102,7 @@ st.markdown("""
         border-radius: 10px;
         border-left: 4px solid #667eea;
         margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .success-box {
         background: #d4edda;
@@ -46,6 +110,7 @@ st.markdown("""
         border-radius: 10px;
         border-left: 4px solid #28a745;
         margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
     }
     .warning-box {
         background: #fff3cd;
@@ -53,6 +118,46 @@ st.markdown("""
         border-radius: 10px;
         border-left: 4px solid #ffc107;
         margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .error-box {
+        background: #f8d7da;
+        padding: 1rem;
+        border-radius: 10px;
+        border-left: 4px solid #dc3545;
+        margin: 1rem 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem;
+        border-radius: 10px;
+        color: white;
+        font-weight: bold;
+        z-index: 1000;
+        animation: slideIn 0.5s ease-out;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .notification.success {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    }
+    .notification.error {
+        background: linear-gradient(135deg, #dc3545 0%, #e74c3c 100%);
+    }
+    .notification.warning {
+        background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+    }
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
@@ -61,10 +166,40 @@ st.markdown("""
         background-color: #f0f2f6;
         border-radius: 4px 4px 0px 0px;
         padding: 10px 16px;
+        transition: all 0.3s ease;
     }
     .stTabs [aria-selected="true"] {
         background-color: #667eea;
         color: white;
+        transform: scale(1.05);
+    }
+    .stButton > button {
+        border-radius: 10px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .stTextInput > div > div > input {
+        border-radius: 10px;
+        border: 2px solid #e0e0e0;
+        transition: border-color 0.3s ease;
+    }
+    .stTextInput > div > div > input:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+    }
+    .stFileUploader > div {
+        border-radius: 10px;
+        border: 2px dashed #667eea;
+        background: #f8f9fa;
+        transition: all 0.3s ease;
+    }
+    .stFileUploader > div:hover {
+        border-color: #764ba2;
+        background: #f0f2f6;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -74,6 +209,9 @@ st.markdown("""
 <div class="main-header">
     <h1>🎥 AI Content Analyzer & Knowledge Explorer</h1>
     <p>Transform your videos, audio, and documents into actionable insights with AI-powered analysis</p>
+</div>
+<div class="developer-info">
+    <p>🚀 Developed by <strong>Anitesh Shaw</strong> | Employee ID: 234343 | TCS</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -99,16 +237,64 @@ if 'qa_mode' not in st.session_state:
 
 # Step 1: Groq API Key Input
 st.markdown("## 🔑 Step 1: API Configuration")
+
+# Initialize session state for API validation
+if 'api_validated' not in st.session_state:
+    st.session_state['api_validated'] = False
+if 'api_validation_message' not in st.session_state:
+    st.session_state['api_validation_message'] = ""
+
 groq_api_key = st.text_input(
     "Enter your Groq API Key", 
     type="password", 
     help="Required for content analysis and Q&A. Get your free API key from https://console.groq.com/",
-    placeholder="gsk_..."
+    placeholder="gsk_...",
+    key="api_key_input"
 )
 
-if not groq_api_key:
+# API Key validation
+if groq_api_key:
+    if not groq_api_key.startswith("gsk_"):
+        st.error("❌ Invalid API key format. Groq API keys start with 'gsk_'")
+        st.session_state['api_validated'] = False
+    else:
+        # Validate API key
+        if st.button("🔍 Validate API Key", type="secondary"):
+            with st.spinner("🔍 Validating API key..."):
+                is_valid, message = validate_groq_api_key(groq_api_key)
+                st.session_state['api_validated'] = is_valid
+                st.session_state['api_validation_message'] = message
+                
+                if is_valid:
+                    show_notification("✅ API key validated successfully!", "success", 5)
+                else:
+                    show_notification("❌ API key validation failed!", "error", 5)
+        
+        # Show validation status
+        if st.session_state['api_validation_message']:
+            if st.session_state['api_validated']:
+                st.success(f"✅ {st.session_state['api_validation_message']}")
+            else:
+                st.error(f"❌ {st.session_state['api_validation_message']}")
+        
+        # Show validation status indicator
+        if st.session_state['api_validated']:
+            st.markdown("""
+            <div class="success-box">
+                <h4>🔐 API Key Status: Valid</h4>
+                <p>Your API key has been validated and is ready to use!</p>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="warning-box">
+                <h4>⚠️ API Key Status: Not Validated</h4>
+                <p>Please validate your API key before proceeding to ensure it works correctly.</p>
+            </div>
+            """, unsafe_allow_html=True)
+else:
     st.warning("⚠️ Please enter your Groq API key to continue")
-    st.stop()
+    st.session_state['api_validated'] = False
 
 # Step 2: Content Upload
 st.markdown("## 📁 Step 2: Upload Content")
@@ -132,57 +318,62 @@ with col2:
 
 # Processing button
 if (video_file or youtube_url) and groq_api_key:
-    if st.button("🚀 Process Content", type="primary", use_container_width=True):
-        # Reset states
-        st.session_state['processing_complete'] = False
-        st.session_state['embeddings_generated'] = False
-        st.session_state['token_usage'] = {'input_tokens': 0, 'output_tokens': 0, 'estimated_cost': 0}
-        
-        # Process content
-        if video_file:
-            video_path = f"temp_{video_file.name}"
-            with open(video_path, "wb") as f:
-                f.write(video_file.read())
-            st.info(f"📁 Processing uploaded file: {video_file.name}")
-        elif youtube_url:
-            video_path = youtube_url
-            st.info("📺 Processing YouTube URL...")
-        
-        # Content processing
-        with st.spinner("🔄 Extracting content..."):
-            transcript = process_content(video_path)
+    # Check if API key is validated
+    if not st.session_state.get('api_validated', False):
+        st.error("❌ Please validate your API key before processing content.")
+        st.info("💡 Click the 'Validate API Key' button above to ensure your key works correctly.")
+    else:
+        if st.button("🚀 Process Content", type="primary", use_container_width=True):
+            # Reset states
+            st.session_state['processing_complete'] = False
+            st.session_state['embeddings_generated'] = False
+            st.session_state['token_usage'] = {'input_tokens': 0, 'output_tokens': 0, 'estimated_cost': 0}
             
-        if isinstance(transcript, str) and transcript.startswith("[Error:"):
-            st.error(transcript)
-        else:
-            st.session_state['transcript'] = transcript
-            st.success("✅ Content extraction complete!")
+            # Process content
+            if video_file:
+                video_path = f"temp_{video_file.name}"
+                with open(video_path, "wb") as f:
+                    f.write(video_file.read())
+                st.info(f"📁 Processing uploaded file: {video_file.name}")
+            elif youtube_url:
+                video_path = youtube_url
+                st.info("📺 Processing YouTube URL...")
             
-            # Generate metadata
-            with st.spinner("🧠 Generating comprehensive metadata..."):
-                metadata = generate_video_metadata(transcript, groq_api_key)
-                st.session_state['metadata'] = metadata
+            # Content processing
+            with st.spinner("🔄 Extracting content..."):
+                transcript = process_content(video_path)
                 
-                # Update token usage if available
-                if metadata and 'token_usage' in metadata:
-                    st.session_state['token_usage'] = metadata['token_usage']
+            if isinstance(transcript, str) and transcript.startswith("[Error:"):
+                st.error(transcript)
+            else:
+                st.session_state['transcript'] = transcript
+                st.success("✅ Content extraction complete!")
+                
+                # Generate metadata
+                with st.spinner("🧠 Generating comprehensive metadata..."):
+                    metadata = generate_video_metadata(transcript, groq_api_key)
+                    st.session_state['metadata'] = metadata
                     
-            st.success("✅ Metadata generation complete!")
-            
-            # Generate embeddings automatically
-            with st.spinner("🔍 Generating embeddings for Q&A..."):
-                store_embeddings(transcript)
-                st.session_state['embeddings_generated'] = True
-            st.success("✅ Embeddings generated!")
-            
-            # Mark processing as complete
-            st.session_state['processing_complete'] = True
-            
-            # Clean up temporary file
-            if video_file and os.path.exists(video_path):
-                os.remove(video_path)
-            
-            st.success("🎉 All processing complete! Scroll down to view results.")
+                    # Update token usage if available
+                    if metadata and 'token_usage' in metadata:
+                        st.session_state['token_usage'] = metadata['token_usage']
+                        
+                st.success("✅ Metadata generation complete!")
+                
+                # Generate embeddings automatically
+                with st.spinner("🔍 Generating embeddings for Q&A..."):
+                    store_embeddings(transcript)
+                    st.session_state['embeddings_generated'] = True
+                st.success("✅ Embeddings generated!")
+                
+                # Mark processing as complete
+                st.session_state['processing_complete'] = True
+                
+                # Clean up temporary file
+                if video_file and os.path.exists(video_path):
+                    os.remove(video_path)
+                
+                st.success("🎉 All processing complete! Scroll down to view results.")
 
 # Display results if processing is complete
 if st.session_state['processing_complete'] and st.session_state['transcript']:
@@ -363,6 +554,7 @@ if st.session_state['processing_complete'] and st.session_state['transcript']:
                             st.session_state['token_usage']['output_tokens'] += qa_tokens['output_tokens']
                             st.session_state['token_usage']['estimated_cost'] += qa_tokens['estimated_cost']
                 
+                show_notification("✅ Answer generated successfully!", "success", 5)
                 st.success("✅ Answer ready!")
         
         # Display answer (outside the form to prevent clearing)
@@ -420,3 +612,13 @@ if st.session_state['token_usage']['input_tokens'] > 0:
         st.metric("Estimated Cost", f"${st.session_state['token_usage']['estimated_cost']:.4f}")
     
     st.info("💡 Cost estimates are approximate. Actual costs may vary based on Groq's pricing.")
+
+# Footer with developer information
+st.markdown("---")
+st.markdown("""
+<div class="developer-info">
+    <p>🚀 <strong>AI Content Analyzer & Knowledge Explorer</strong></p>
+    <p>Developed by <strong>Anitesh Shaw</strong> | Employee ID: 234343 | Tata Consultancy Services</p>
+    <p>📧 anitesh.shaw@tcs.com | 🔗 <a href="https://github.com/tcsanitesh/aivideo-transcriber" target="_blank" style="color: white;">GitHub Repository</a></p>
+</div>
+""", unsafe_allow_html=True)

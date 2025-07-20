@@ -7,6 +7,3 @@ except ImportError:
         print("moviepy.video.editor imported successfully!")
     except ImportError:
         print("moviepy is not installed or could not be imported.")
-        print("moviepy.video.editor imported successfully!")
-    except ImportError:
-        print("moviepy is not installed or could not be imported.")
